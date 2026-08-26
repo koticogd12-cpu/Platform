@@ -703,6 +703,20 @@ function drawFlag(x, y) {
   ctx.fill();
 }
 
+function drawRoundedRect(ctx, x, y, w, h, r) {
+  // Ручная реализация скруглённого прямоугольника — работает во всех браузерах,
+  // в отличие от ctx.roundRect, которого нет в старых версиях Chrome/Android WebView.
+  if (w < 2 * r) r = w / 2;
+  if (h < 2 * r) r = h / 2;
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
 function drawPlayer(p, t) {
   if (!p.alive) return;
   ctx.save();
@@ -710,8 +724,7 @@ function drawPlayer(p, t) {
   const squash = p.onGround ? 1 : 1 - Math.min(0.15, Math.abs(p.vy)*0.08);
   ctx.scale(1/squash, squash);
   ctx.fillStyle = p.color;
-  ctx.beginPath();
-  ctx.roundRect(-p.w/2, -p.h/2, p.w, p.h, 8);
+  drawRoundedRect(ctx, -p.w/2, -p.h/2, p.w, p.h, 8);
   ctx.fill();
   ctx.fillStyle = '#fff';
   ctx.beginPath();
@@ -753,7 +766,13 @@ function gameLoop(now) {
   }
 
   sendNetworkUpdates(dt);
-  draw(now);
+  try {
+    draw(now);
+  } catch (e) {
+    // Не даём ошибке отрисовки полностью остановить игровой цикл —
+    // логика и сеть продолжат работать, даже если один кадр не нарисовался.
+    console.error('Ошибка отрисовки:', e);
+  }
 
   requestAnimationFrame(gameLoop);
 }
